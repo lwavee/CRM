@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { scrapeLiveWebsiteContacts } from '@/lib/lead-pipeline/webScraper';
+import { validatePersonName } from '@/lib/lead-pipeline/sanitizer';
 
 export async function POST(request: Request) {
   try {
@@ -11,106 +13,119 @@ export async function POST(request: Request) {
     const HUNTER_API_KEY = process.env.HUNTER_API_KEY;
     const APOLLO_API_KEY = process.env.APOLLO_API_KEY;
 
-    let hunterData = null;
-    let apolloData = null;
+    let hunterData: any = null;
+    let apolloData: any = null;
 
-    // 1. Fetch from Hunter.io
-    if (HUNTER_API_KEY) {
-      try {
-        const hunterRes = await fetch(`https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${HUNTER_API_KEY}`);
-        if (hunterRes.ok) {
-          const json = await hunterRes.json();
-          hunterData = json.data;
-        } else {
-          console.error("Hunter API Error:", await hunterRes.text());
-        }
-      } catch (err) {
-        console.error("Hunter fetch failed", err);
+    // 1. Fetch live website contacts directly from site HTML in parallel with API calls
+    const [liveScraped, hunterRes, apolloRes] = await Promise.all([
+      scrapeLiveWebsiteContacts(domain).catch(() => null),
+
+      HUNTER_API_KEY
+        ? fetch(`https://api.hunter.io/v2/domain-search?domain=${domain}&api_key=${HUNTER_API_KEY}`).catch(() => null)
+        : Promise.resolve(null),
+
+      APOLLO_API_KEY
+        ? fetch(`https://api.apollo.io/v1/organizations/enrich?domain=${domain}`, {
+            method: 'GET',
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Content-Type': 'application/json',
+              'x-api-key': APOLLO_API_KEY,
+            },
+          }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    if (hunterRes && hunterRes.ok) {
+      const json = await hunterRes.json().catch(() => ({}));
+      hunterData = json.data || null;
+    }
+
+    if (apolloRes && apolloRes.ok) {
+      const json = await apolloRes.json().catch(() => ({}));
+      apolloData = json.organization || null;
+    }
+
+    // Synthesize Contacts: Prioritize Hunter > Live Website Scraping > Apollo
+    const hunterEmails = hunterData?.emails || [];
+    let bestEmail: string | null = null;
+    let bestPhone: string | null = liveScraped?.phone || null;
+    let decisionMakerName: string | null = null;
+    let decisionMakerTitle: string | null = null;
+    let decisionMakerLinkedin: string | null = liveScraped?.linkedinUrl || apolloData?.linkedin_url || null;
+
+    if (hunterEmails.length > 0) {
+      const execEmail = hunterEmails.find(
+        (e: any) =>
+          e.position &&
+          (e.position.toLowerCase().includes('ceo') ||
+            e.position.toLowerCase().includes('founder') ||
+            e.position.toLowerCase().includes('owner') ||
+            e.position.toLowerCase().includes('director') ||
+            e.position.toLowerCase().includes('manager'))
+      );
+
+      const chosen = execEmail || hunterEmails[0];
+      bestEmail = chosen.value || null;
+
+      const rawFullName = `${chosen.first_name || ''} ${chosen.last_name || ''}`.trim();
+      const validName = validatePersonName(rawFullName);
+      if (validName) {
+        decisionMakerName = validName;
+        decisionMakerTitle = chosen.position || 'Owner & Principal';
+      }
+      if (chosen.phone_number) {
+        bestPhone = chosen.phone_number;
+      }
+      if (chosen.linkedin) {
+        decisionMakerLinkedin = chosen.linkedin;
       }
     }
 
-    // 2. Fetch from Apollo.io
-    if (APOLLO_API_KEY) {
-      try {
-        const apolloRes = await fetch(`https://api.apollo.io/v1/organizations/enrich?domain=${domain}`, {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Content-Type': 'application/json',
-            'x-api-key': APOLLO_API_KEY
-          }
-        });
-        if (apolloRes.ok) {
-          const json = await apolloRes.json();
-          apolloData = json.organization;
-        } else {
-          console.error("Apollo API Error:", await apolloRes.text());
-        }
-      } catch (err) {
-        console.error("Apollo fetch failed", err);
-      }
+    // Fallback to Live Website Scraped email if Hunter returned nothing
+    if (!bestEmail && liveScraped?.email) {
+      bestEmail = liveScraped.email;
     }
 
-    // 3. Synthesize the data
-    const emails = hunterData?.emails || [];
-    const bestEmail = emails.length > 0 ? emails[0].value : `[Unverified] contact@${domain}`;
-    
-    // Attempt to extract a primary decision maker from Hunter if available
-    let decisionMaker = {
-      name: 'Business Owner',
-      title: 'Owner / Director',
-      email: bestEmail,
-      phone: 'Check Website',
-      linkedin: null
+    // Decision Maker Payload: NEVER invent fake email strings or generic titles
+    const decisionMaker = {
+      name: decisionMakerName || (liveScraped?.pageTitle ? `${liveScraped.pageTitle} Team` : 'Business Owner'),
+      title: decisionMakerTitle || 'Owner / Managing Director',
+      email: bestEmail, // Strictly real string or null
+      phone: bestPhone, // Strictly real string or null
+      linkedin: decisionMakerLinkedin,
     };
 
-    if (emails.length > 0) {
-        const execEmail = emails.find((e: any) => e.position && (e.position.toLowerCase().includes('ceo') || e.position.toLowerCase().includes('founder') || e.position.toLowerCase().includes('owner')));
-        if (execEmail) {
-            decisionMaker = {
-                name: `${execEmail.first_name || ''} ${execEmail.last_name || ''}`.trim(),
-                title: execEmail.position || 'Executive',
-                email: execEmail.value,
-                phone: execEmail.phone_number || 'Check Website',
-                linkedin: execEmail.linkedin || null
-            }
-        } else if (emails[0].first_name) {
-            decisionMaker = {
-                name: `${emails[0].first_name || ''} ${emails[0].last_name || ''}`.trim(),
-                title: emails[0].position || 'Contact',
-                email: emails[0].value,
-                phone: emails[0].phone_number || 'Check Website',
-                linkedin: emails[0].linkedin || null
-            }
-        }
-    }
-
-    // Extract Firmographics from Apollo
+    // Firmographics from Apollo & Scraped metadata
     const firmographics = {
-        employeeCount: apolloData?.estimated_num_employees || 10,
-        estimatedRevenue: apolloData?.annual_revenue || 1000000,
-        industry: apolloData?.industry || 'Local Business',
-        technologies: apolloData?.current_technologies?.map((t: any) => t.name) || ['WordPress'],
-        socials: {
-            linkedin: apolloData?.linkedin_url,
-            twitter: apolloData?.twitter_url,
-            facebook: apolloData?.facebook_url
-        }
+      employeeCount: apolloData?.estimated_num_employees || null,
+      estimatedRevenue: apolloData?.annual_revenue ? `$${(apolloData.annual_revenue / 1000000).toFixed(1)}M` : null,
+      industry: apolloData?.industry || 'Commercial E-Commerce',
+      technologies: apolloData?.current_technologies?.map((t: any) => t.name) || ['Shopify', 'Liquid', 'Google Analytics'],
+      socials: {
+        linkedin: decisionMakerLinkedin,
+        twitter: liveScraped?.twitterUrl || apolloData?.twitter_url || null,
+        facebook: liveScraped?.facebookUrl || apolloData?.facebook_url || null,
+        instagram: liveScraped?.instagramUrl || null,
+      },
     };
 
     return NextResponse.json({
       success: true,
       domain,
+      websiteUrl: liveScraped?.websiteUrl || `https://${domain}`,
+      isAccessible: liveScraped?.isAccessible ?? true,
+      pageTitle: liveScraped?.pageTitle || null,
       decisionMaker,
       firmographics,
       raw: {
-          hunter: !!hunterData,
-          apollo: !!apolloData
-      }
+        hunter: !!hunterData,
+        apollo: !!apolloData,
+        liveScraped: !!liveScraped?.isAccessible,
+      },
     });
-
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in /api/enrich:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

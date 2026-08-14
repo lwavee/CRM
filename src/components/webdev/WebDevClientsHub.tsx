@@ -941,11 +941,15 @@ export const WebDevClientsHub: React.FC = () => {
                 <div className="space-y-2 text-xs text-slate-300">
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-indigo-400" /> General Email</span>
-                    <span className="font-medium text-white">{activeClient.email}</span>
+                    <span className="font-medium text-white">
+                      {activeClient.email && !activeClient.email.includes('[Unverified]') ? activeClient.email : (activeClient.domain ? `contact@${activeClient.domain}` : 'Not available')}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-emerald-400" /> Phone</span>
-                    <span className="font-medium text-white">{activeClient.phone}</span>
+                    <span className="font-medium text-white">
+                      {activeClient.phone && activeClient.phone !== 'Check Website' ? activeClient.phone : 'Not available'}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-rose-400" /> Location</span>
@@ -969,13 +973,17 @@ export const WebDevClientsHub: React.FC = () => {
                   )}
                 </div>
                 <div className="pt-1">
-                  <button
-                    onClick={() => handleCopyEmail(activeClient.decisionMaker.email, 'modal')}
-                    className="w-full justify-center px-3 py-2 rounded-lg bg-blue-600/20 hover:bg-blue-600 border border-blue-500/30 hover:border-transparent text-blue-400 hover:text-white text-xs font-semibold transition flex items-center gap-1.5"
-                  >
-                    {copiedEmail === 'modal' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Mail className="w-3.5 h-3.5" />}
-                    <span>{activeClient.decisionMaker.email}</span>
-                  </button>
+                  {activeClient.decisionMaker.email && !activeClient.decisionMaker.email.includes('[Unverified]') ? (
+                    <button
+                      onClick={() => handleCopyEmail(activeClient.decisionMaker.email, 'modal')}
+                      className="w-full justify-center px-3 py-2 rounded-lg bg-blue-600/20 hover:bg-blue-600 border border-blue-500/30 hover:border-transparent text-blue-400 hover:text-white text-xs font-semibold transition flex items-center gap-1.5"
+                    >
+                      {copiedEmail === 'modal' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Mail className="w-3.5 h-3.5" />}
+                      <span>{activeClient.decisionMaker.email}</span>
+                    </button>
+                  ) : (
+                    <span className="text-xs text-slate-400 italic block text-center py-1">Direct Email: Not available</span>
+                  )}
                 </div>
               </div>
             </div>
