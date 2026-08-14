@@ -9,6 +9,9 @@ on:
 jobs:
   lint-and-build:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres_password@localhost:5432/eliteops_leads_test?schema=public"
+      REDIS_URL: "redis://localhost:6379"
 
     services:
       postgres:
