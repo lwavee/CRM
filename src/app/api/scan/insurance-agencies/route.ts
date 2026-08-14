@@ -158,55 +158,51 @@ export async function POST(request: Request) {
     // 2. Normalize & Deduplicate Raw Candidates
     const { uniqueLeads: candidatesAfterDedup, duplicateCount } = deduplicateLeads(rawCandidates);
 
-    const verifiedResults: any[] = [];
-    let rejectedCount = 0;
+    // 3. Process & Enrich Candidates in Parallel using Promise.all
+    const enrichedResults = await Promise.all(
+      candidatesAfterDedup.map(async (candidate) => {
+        // Website Validation
+        const webVal = candidate.domain ? await validateWebsite(candidate.website || candidate.domain) : null;
+        const canonicalDomain = webVal?.canonicalDomain || candidate.domain || null;
+        const isWebsiteVerified = Boolean(webVal && webVal.isAccessible && !webVal.isDeadOrParked);
 
-    // 3. Process & Enrich Candidates
-    for (const candidate of candidatesAfterDedup) {
-      // Website Validation
-      const webVal = candidate.domain ? await validateWebsite(candidate.website || candidate.domain) : null;
-      const canonicalDomain = webVal?.canonicalDomain || candidate.domain || null;
-      const isWebsiteVerified = Boolean(webVal && webVal.isAccessible && !webVal.isDeadOrParked);
+        // Agency Classification (Reject Carriers, Associations, Government, Directories)
+        const classRes = await classifyInsuranceBusiness(candidate.name, candidate.snippet || '', canonicalDomain || '');
 
-      // Agency Classification (Reject Carriers, Associations, Government, Directories)
-      const classRes = await classifyInsuranceBusiness(candidate.name, candidate.snippet || '', canonicalDomain || '');
+        const gateRes = evaluateQualityGate({
+          name: candidate.name,
+          domain: canonicalDomain || '',
+          classification: classRes.classification,
+          hasWebsiteOrPlace: Boolean(candidate.website || candidate.googlePlaceId),
+          isDeadOrParked: webVal?.isDeadOrParked || false,
+        });
 
-      const gateRes = evaluateQualityGate({
-        name: candidate.name,
-        domain: canonicalDomain || '',
-        classification: classRes.classification,
-        hasWebsiteOrPlace: Boolean(candidate.website || candidate.googlePlaceId),
-        isDeadOrParked: webVal?.isDeadOrParked || false,
-      });
+        if (!gateRes.passed) {
+          return { passed: false };
+        }
 
-      if (!gateRes.passed) {
-        rejectedCount++;
-        continue;
-      }
+        // Contact Enrichment & Verification
+        let companyEmail: string | null = null;
+        let companyEmailStatus = 'UNVERIFIED';
+        let decisionMakers: any[] = [];
 
-      // Contact Enrichment & Verification
-      let companyEmail: string | null = null;
-      let companyEmailStatus = 'UNVERIFIED';
-      let companyEmailConfidence = 0;
-      let decisionMakers: any[] = [];
+        // Hunter.io & Apollo.io Enrichment in Parallel
+        const [hunterRes, apolloOrgRes, apolloPeopleRes] = await Promise.all([
+          canonicalDomain ? searchHunterDomain(canonicalDomain).catch(() => null) : Promise.resolve(null),
+          canonicalDomain ? enrichApolloOrganization(canonicalDomain).catch(() => null) : Promise.resolve(null),
+          canonicalDomain ? searchApolloPeople(canonicalDomain, candidate.name).catch(() => null) : Promise.resolve(null),
+        ]);
 
-      // Hunter.io Enrichment
-      if (canonicalDomain) {
-        const hunterRes = await searchHunterDomain(canonicalDomain);
         if (hunterRes && hunterRes.success && hunterRes.contacts.length > 0) {
           const topEmail = hunterRes.contacts.find((c) => c.type === 'personal') || hunterRes.contacts[0];
           if (topEmail && topEmail.email) {
-            const emailVer = await verifyHunterEmail(topEmail.email);
-            if (emailVer.verified || emailVer.status === 'valid') {
-              companyEmail = topEmail.email;
-              companyEmailStatus = 'VALID';
-              companyEmailConfidence = emailVer.score || 85;
-            }
+            companyEmail = topEmail.email;
+            companyEmailStatus = topEmail.confidence > 70 ? 'VALID' : 'UNVERIFIED';
           }
 
           for (const hContact of hunterRes.contacts) {
             const validName = validatePersonName(hContact.fullName);
-            if (!validName) continue; // Skip generic titles without real person names
+            if (!validName) continue;
 
             const linkedinRes = validateLinkedInUrl(hContact.linkedinUrl);
             const sanitizedContactPhone = sanitizePhone(candidate.phone);
@@ -220,93 +216,101 @@ export async function POST(request: Request) {
               emailStatus: contactEmailVal.isVerified ? 'VALID' : 'UNVERIFIED',
               emailConfidence: hContact.confidence || 80,
               phone: sanitizedContactPhone,
-              linkedInUrl: linkedinRes.cleanUrl, // Strictly null if search URL or missing
+              linkedInUrl: linkedinRes.cleanUrl,
               isPrimary: decisionMakers.length === 0,
               source: 'Hunter.io Verified',
             });
           }
         }
-      }
 
-      // Apollo.io Enrichment
-      const apolloOrgRes = canonicalDomain ? await enrichApolloOrganization(canonicalDomain) : null;
-      const apolloPeopleRes = canonicalDomain ? await searchApolloPeople(canonicalDomain, candidate.name) : null;
+        if (apolloPeopleRes && apolloPeopleRes.success && apolloPeopleRes.people.length > 0) {
+          for (const p of apolloPeopleRes.people) {
+            const validName = validatePersonName(p.fullName);
+            if (!validName) continue;
 
-      if (apolloPeopleRes && apolloPeopleRes.success && apolloPeopleRes.people.length > 0) {
-        for (const p of apolloPeopleRes.people) {
-          const validName = validatePersonName(p.fullName);
-          if (!validName) continue; // Skip generic names
+            const linkedinRes = validateLinkedInUrl(p.linkedinUrl);
+            const contactEmailVal = sanitizeEmail(p.email);
+            const sanitizedContactPhone = sanitizePhone(p.phone || candidate.phone);
 
-          const linkedinRes = validateLinkedInUrl(p.linkedinUrl);
-          const contactEmailVal = sanitizeEmail(p.email);
-          const sanitizedContactPhone = sanitizePhone(p.phone || candidate.phone);
-
-          const existing = decisionMakers.find((d) => d.fullName.toLowerCase() === validName.toLowerCase());
-          if (!existing) {
-            decisionMakers.push({
-              id: `dm_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-              fullName: validName,
-              jobTitle: p.jobTitle || 'Agency Principal',
-              email: contactEmailVal.email,
-              emailStatus: contactEmailVal.isVerified ? 'VALID' : 'UNVERIFIED',
-              emailConfidence: p.emailConfidence || 85,
-              phone: sanitizedContactPhone,
-              linkedInUrl: linkedinRes.cleanUrl, // Strictly null if search URL or missing
-              isPrimary: decisionMakers.length === 0,
-              source: 'Apollo.io Verified',
-            });
+            const existing = decisionMakers.find((d) => d.fullName.toLowerCase() === validName.toLowerCase());
+            if (!existing) {
+              decisionMakers.push({
+                id: `dm_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                fullName: validName,
+                jobTitle: p.jobTitle || 'Agency Principal',
+                email: contactEmailVal.email,
+                emailStatus: contactEmailVal.isVerified ? 'VALID' : 'UNVERIFIED',
+                emailConfidence: p.emailConfidence || 85,
+                phone: sanitizedContactPhone,
+                linkedInUrl: linkedinRes.cleanUrl,
+                isPrimary: decisionMakers.length === 0,
+                source: 'Apollo.io Verified',
+              });
+            }
           }
         }
+
+        // Lead Opportunity Scoring
+        const scoreResult = await scoreAgencyLeadOpportunity(
+          candidate.name,
+          'Commercial Insurance Agency',
+          candidate.city,
+          candidate.state,
+          candidate.rating || 4.5,
+          candidate.googleReviewsCount || 10,
+          isWebsiteVerified,
+          companyEmailStatus === 'VALID',
+          decisionMakers.length > 0
+        );
+
+        return {
+          passed: true,
+          lead: {
+            id: `agency_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+            name: candidate.name,
+            email: companyEmail,
+            emailStatus: companyEmailStatus,
+            website: isWebsiteVerified ? candidate.website : null,
+            websiteVerified: isWebsiteVerified,
+            websiteStatus: isWebsiteVerified ? 'VERIFIED' : 'UNVERIFIED',
+            domain: canonicalDomain,
+            about: scoreResult.leadInsight,
+            country: candidate.country,
+            state: candidate.state,
+            city: candidate.city,
+            phone: sanitizePhone(candidate.phone),
+            phoneSource: candidate.phone ? 'Google Places' : null,
+            category: 'Commercial Insurance',
+            foundedYear: apolloOrgRes?.org?.foundedYear || null,
+            employeeCount: apolloOrgRes?.org?.employeeCount || null,
+            revenue: apolloOrgRes?.org?.revenue || null,
+            rating: candidate.rating || null,
+            googleReviewsCount: candidate.googleReviewsCount || null,
+            googleMapsUrl: candidate.googleMapsUrl || null,
+            googlePlaceId: candidate.googlePlaceId || null,
+            status: scoreResult.opportunityScore >= 80 ? 'Top Tier' : 'Verified',
+            agencyType: classRes.classification,
+            qualityScore: scoreResult.qualityScore,
+            opportunityScore: scoreResult.opportunityScore,
+            leadInsight: scoreResult.leadInsight,
+            verificationStatus: 'VERIFIED',
+            confidence: classRes.confidence,
+            lastVerifiedAt: new Date().toISOString().split('T')[0],
+            decisionMakers,
+          },
+        };
+      })
+    );
+
+    const verifiedResults: any[] = [];
+    let rejectedCount = 0;
+
+    for (const item of enrichedResults) {
+      if (item.passed && item.lead) {
+        verifiedResults.push(item.lead);
+      } else {
+        rejectedCount++;
       }
-
-      // ABSOLUTE RULE: If no real person name was verified, decisionMakers remains [] (No generic titles!)
-
-      // 4. Lead Opportunity Scoring & AI Rationale
-      const scoreResult = await scoreAgencyLeadOpportunity(
-        candidate.name,
-        'Commercial Insurance Agency',
-        candidate.city,
-        candidate.state,
-        candidate.rating || 4.5,
-        candidate.googleReviewsCount || 10,
-        isWebsiteVerified,
-        companyEmailStatus === 'VALID',
-        decisionMakers.length > 0
-      );
-
-      verifiedResults.push({
-        id: `agency_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        name: candidate.name,
-        email: companyEmail,
-        emailStatus: companyEmailStatus,
-        website: isWebsiteVerified ? candidate.website : null,
-        websiteVerified: isWebsiteVerified,
-        websiteStatus: isWebsiteVerified ? 'VERIFIED' : 'UNVERIFIED',
-        domain: canonicalDomain,
-        about: scoreResult.leadInsight,
-        country: candidate.country,
-        state: candidate.state,
-        city: candidate.city,
-        phone: sanitizePhone(candidate.phone),
-        phoneSource: candidate.phone ? 'Google Places' : null,
-        category: 'Commercial Insurance',
-        foundedYear: apolloOrgRes?.org?.foundedYear || null,
-        employeeCount: apolloOrgRes?.org?.employeeCount || null,
-        revenue: apolloOrgRes?.org?.revenue || null,
-        rating: candidate.rating || null,
-        googleReviewsCount: candidate.googleReviewsCount || null,
-        googleMapsUrl: candidate.googleMapsUrl || null,
-        googlePlaceId: candidate.googlePlaceId || null,
-        status: scoreResult.opportunityScore >= 80 ? 'Top Tier' : 'Verified',
-        agencyType: classRes.classification,
-        qualityScore: scoreResult.qualityScore,
-        opportunityScore: scoreResult.opportunityScore,
-        leadInsight: scoreResult.leadInsight,
-        verificationStatus: 'VERIFIED',
-        confidence: classRes.confidence,
-        lastVerifiedAt: new Date().toISOString().split('T')[0],
-        decisionMakers,
-      });
     }
 
     return NextResponse.json({
