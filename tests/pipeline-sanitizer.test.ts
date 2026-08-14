@@ -35,7 +35,11 @@ export function runPipelineSanitizerTests() {
     isDeadOrParked: false,
   });
 
-  if (gateRes.passed) throw new Error('Failed REGRESSION 4: Carrier corporation was not rejected by quality gate!');
+  // REGRESSION 5: Production static array isolation test
+  const { INITIAL_INSURANCE_COMPANIES } = require('../src/lib/data/insurance-db');
+  if (INITIAL_INSURANCE_COMPANIES.length !== 0) {
+    throw new Error('Failed REGRESSION 5: INITIAL_INSURANCE_COMPANIES is not empty! Static demo records found in production data source.');
+  }
 
   console.log('✅ ALL PIPELINE SANITIZER & REGRESSION TESTS PASSED CLEANLY!');
   return true;
