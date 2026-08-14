@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EliteOps Platform Documentation - AI Lead Intelligence System</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    
+    @page {
+      size: A4;
+      margin: 18mm 15mm 18mm 15mm;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #0f172a;
+      background-color: #ffffff;
+      line-height: 1.6;
+      font-size: 13px;
+      margin: 0;
+      padding: 25px;
+    }
+
+    .cover-header {
+      background: linear-gradient(135deg, #0b0f19 0%, #1e293b 100%);
+      color: #ffffff;
+      padding: 35px 30px;
+      border-radius: 16px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+
+    .cover-header h1 {
+      font-size: 26px;
+      font-weight: 800;
+      margin: 0 0 10px 0;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+    }
+
+    .cover-header p {
+      font-size: 14px;
+      color: #94a3b8;
+      margin: 0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 8px;
+      margin-top: 30px;
+      margin-bottom: 15px;
+    }
+
+    h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    p, li {
+      color: #334155;
+    }
+
+    ul {
+      padding-left: 20px;
+      margin-top: 6px;
+      margin-bottom: 14px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    .api-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0 25px 0;
+      font-size: 12px;
+    }
+
+    .api-table th {
+      background-color: #0f172a;
+      color: #ffffff;
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 700;
+    }
+
+    .api-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .api-table tr:nth-child(even) {
+      background-color: #f8fafc;
+    }
+
+    .code-span {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: #f1f5f9;
+      color: #2563eb;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .feature-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #2563eb;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .feature-card h4 {
+      margin: 0 0 6px 0;
+      font-size: 14px;
+      color: #0f172a;
+    }
+
+    .footer-note {
+      margin-top: 40px;
+      padding-top: 15px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 11px;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    @media print {
+      body {
+        padding: 0;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cover Header -->
+  <div class="cover-header">
+    <div class="badge">ELITEOPS GLOBAL SYSTEM DOCUMENTATION</div>
+    <h1>EliteOps B2B Lead Intelligence Platform</h1>
+    <p>Complete Operational Manual, Architecture Specification & API Key Guide</p>
+  </div>
+
+  <!-- Section 1: Executive Overview -->
+  <h2>1. Executive Summary & Core Purpose</h2>
+  <p>
+    The <strong>EliteOps Lead Intelligence Platform</strong> is an enterprise B2B client acquisition system built specifically for <strong>EliteOps Global</strong>. It automates the discovery, auditing, scoring, and outreach pipeline for high-intent B2B clients across target regions: <strong>USA, Canada, United Kingdom, Australia, and UAE</strong>.
+  </p>
+  <div class="feature-card">
+    <h4>Target Business Profile: Insurance Agencies & Brokerages</h4>
+    <p>
+      The system specifically targets independent commercial insurance agencies, local brokerages, and risk consulting firms (20 to 100 employees). Unlike massive corporate carriers, independent insurance agencies actively contract external partners for <strong>Website Redesign (Next.js/React)</strong>, <strong>Digital Marketing & Local SEO</strong>, <strong>Virtual Assistants</strong>, and <strong>Back-Office Support</strong>.
+    </p>
+  </div>
+
+  <!-- Section 2: API Keys Breakdown -->
+  <h2>2. API Keys Configuration & Integration Guide</h2>
+  <p>
+    The platform leverages <strong>5 core API keys</strong> configured in the environment file (<span class="code-span">.env</span>). Each key performs a distinct role in discovering, enriching, and scoring real business prospects:
+  </p>
+
+  <table class="api-table">
+    <thead>
+      <tr>
+        <th>API Key Name</th>
+        <th>Service Provider</th>
+        <th>Primary Function & Use Case</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="code-span">OPENAI_API_KEY</span></td>
+        <td>OpenAI (GPT-4o)</td>
+        <td>Calculates multi-factor Opportunity Scores (0–100), synthesizes website audit reports, and generates 1-click human-sounding cold emails, follow-ups, LinkedIn hooks, and call scripts.</td>
+      </tr>
+      <tr>
+        <td><span class="code-span">GOOGLE_SEARCH_API_KEY</span></td>
+        <td>Google Custom Search</td>
+        <td>Executes live web searches querying official business domains and registered agency websites across 50 US states & Canadian provinces.</td>
+      </tr>
+      <tr>
+        <td><span class="code-span">GOOGLE_SEARCH_CX</span></td>
+        <td>Google Programmable Search Engine</td>
+        <td>Defines the search context and index boundaries, filtering out generic directories (Wikipedia, Yelp) to isolate real commercial agencies.</td>
+      </tr>
+      <tr>
+        <td><span class="code-span">HUNTER_API_KEY</span></td>
+        <td>Hunter.io API</td>
+        <td>Enriches company domains with 100% deliverable corporate email addresses (<span class="code-span">support@</span>, <span class="code-span">info@</span>, <span class="code-span">marketing@</span>) and verifies executive contact listings.</td>
+      </tr>
+      <tr>
+        <td><span class="code-span">APOLLO_API_KEY</span></td>
+        <td>Apollo.io API</td>
+        <td>Enriches company firmographics including employee headcount, estimated annual revenue, founding year, corporate phone lines, and social links.</td>
+      </tr>
+      <tr>
+        <td><span class="code-span">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</span></td>
+        <td>Google Places & Maps API</td>
+        <td>Fetches real-time Google Maps location data, star ratings, review counts, and direct Google Maps navigation links for each business.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Section 3: Live Scan Architecture -->
+  <h2>3. Live Scan Engine Architecture (<span class="code-span">/api/scan</span>)</h2>
+  <p>When a user clicks <strong>"Scan 100 NEW Google & Maps"</strong> or <strong>"Re-check & Verify Details"</strong>, the following multi-step workflow executes:</p>
+  <ul>
+    <li><strong>Step 1: Cache Cleanup</strong> — The UI clears all existing cached records (<span class="code-span">setCompanies([])</span>) to ensure only fresh data is presented.</li>
+    <li><strong>Step 2: Live Domain Search</strong> — The backend queries Google Custom Search API for active agency domains in the selected region (e.g. <i>Insurance Agencies in Idaho</i>).</li>
+    <li><strong>Step 3: Email & Firmographic Enrichment</strong> — Discovered domains are passed to Hunter.io & Apollo.io APIs to fetch deliverable corporate emails and revenue data.</li>
+    <li><strong>Step 4: Zero 404 LinkedIn Sync</strong> — The system generates targeted LinkedIn Search URLs (<span class="code-span">https://www.linkedin.com/search/results/people/?keywords=...</span>), ensuring 1-click LinkedIn buttons open valid searches without 404 errors.</li>
+    <li><strong>Step 5: AI Scoring</strong> — OpenAI GPT-4o synthesizes the audit data into a multi-factor score (0–100).</li>
+  </ul>
+
+  <div class="page-break"></div>
+
+  <!-- Section 4: Key Platform Features & How to Use -->
+  <h2>4. Platform User Manual & Feature Guide</h2>
+
+  <div class="feature-card">
+    <h4>1. Full-Screen Command Center Layout</h4>
+    <p>
+      Use the <strong>Full Screen</strong> toggle button (<span class="code-span">Maximize2</span> icon) in the top header to enter native browser fullscreen. Click the <strong>Sidebar Toggle</strong> button (<span class="code-span">PanelLeft</span> icon) to collapse the left panel for an edge-to-edge 100% monitor layout expansion up to 1920px width.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <h4>2. Key Decision Makers & 100% Deliverable Emails</h4>
+    <p>
+      Inside the company details modal, view verified executive contacts including <strong>Agency Principals</strong>, <strong>Agency Owners</strong>, and <strong>Marketing Managers</strong>. Each email displays a green <strong>100% Deliverable</strong> badge to ensure cold outreach emails sent via Outlook or Gmail never bounce.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <h4>3. 1-Click Microsoft Excel Exporter</h4>
+    <p>
+      Click <strong>"Save in DB & Download Excel"</strong> to export prospect data into a UTF-8 BOM CSV file compatible with Microsoft Excel. The export includes separate dedicated columns for CEO/Founder Name, Title, Email, Phone, LinkedIn and Marketing Manager Name, Title, Email, Phone, LinkedIn.
+    </p>
+  </div>
+
+  <div class="feature-card">
+    <h4>4. Interactive CRM Kanban Pipeline</h4>
+    <p>
+      Track lead progress across 9 phases: <span class="code-span">NEW</span> → <span class="code-span">RESEARCHING</span> → <span class="code-span">CONTACTED</span> → <span class="code-span">EMAIL_SENT</span> → <span class="code-span">MEETING_SCHEDULED</span> → <span class="code-span">PROPOSAL_SENT</span> → <span class="code-span">NEGOTIATION</span> → <span class="code-span">WON</span>.
+    </p>
+  </div>
+
+  <!-- Section 5: Environment & Setup Commands -->
+  <h2>5. Environment & System Setup</h2>
+  <p>To run the platform locally or deploy to production, execute the following commands:</p>
+  <pre style="background: #0f172a; color: #38bdf8; padding: 15px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px;">
+# 1. Install Dependencies
+npm install
+
+# 2. Database Migration & ORM Code Generation
+npx prisma db push
+
+# 3. Launch Development Server
+npm run dev
+# Server running at http://localhost:3000
+
+# 4. Launch Docker Production Stack
+docker-compose up -d --build
+  </pre>
+
+  <div class="footer-note">
+    EliteOps Lead Intelligence & B2B Client Acquisition Platform &copy; 2026 EliteOps Global. All rights reserved.
+  </div>
+
+</body>
+</html>

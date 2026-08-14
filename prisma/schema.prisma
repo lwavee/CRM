@@ -1,0 +1,293 @@
+// EliteOps Lead Intelligence Platform Database Schema
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Country {
+  USA
+  CANADA
+  UNITED_KINGDOM
+  AUSTRALIA
+  UAE
+}
+
+enum ServiceCategory {
+  WEBSITE_DEVELOPMENT
+  DIGITAL_MARKETING
+  BACK_OFFICE_SUPPORT
+  VIRTUAL_ASSISTANT
+  AUTOMATION
+  AI_SOLUTIONS
+}
+
+enum DealStage {
+  NEW
+  RESEARCHING
+  CONTACTED
+  EMAIL_SENT
+  MEETING_SCHEDULED
+  PROPOSAL_SENT
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum SignalSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Company {
+  id                  String           @id @default(uuid())
+  name                String
+  website             String
+  domain              String           @unique
+  industry            String
+  employeeCount       Int              @default(10)
+  employeeRange       String           @default("10-50")
+  estimatedRevenue    Float            @default(1000000)
+  country             Country          @default(USA)
+  state               String?
+  city                String?
+  googleMapsUrl       String?
+  googleRating        Float            @default(4.2)
+  googleReviewsCount  Int              @default(15)
+  technologies        String[]         @default([])
+  socialProfiles      Json?            // { linkedin, twitter, facebook, instagram }
+  status              DealStage        @default(NEW)
+  recommendedService ServiceCategory  @default(WEBSITE_DEVELOPMENT)
+  estimatedDealValue  Float            @default(15000)
+  
+  // Scores
+  opportunityScore    Int              @default(75) // 0 - 100
+  buyingIntentScore   Int              @default(80)
+  agencyFitScore      Int              @default(85)
+  
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  // Relations
+  buyingSignals       BuyingSignal[]
+  websiteAudits       WebsiteAudit[]
+  decisionMakers      DecisionMaker[]
+  leadScores          LeadScore[]
+  outreachMessages    OutreachMessage[]
+  crmDeals            CRMDeal[]
+}
+
+model BuyingSignal {
+  id           String         @id @default(uuid())
+  companyId    String
+  company      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  signalType   String         // e.g. HIRING_REACT_DEV, SLOW_WEBSITE, NO_SSL, RECENT_FUNDING
+  title        String
+  description  String
+  severity     SignalSeverity @default(MEDIUM)
+  source       String         @default("Job Scanner")
+  detectedAt   DateTime       @default(now())
+}
+
+model WebsiteAudit {
+  id                 String   @id @default(uuid())
+  companyId          String
+  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  performanceScore   Int      @default(65) // 0-100
+  seoScore           Int      @default(60)
+  accessibilityScore Int      @default(70)
+  mobileScore        Int      @default(55)
+  loadTimeSeconds    Float    @default(3.8)
+  hasSsl             Boolean  @default(true)
+  hasBlog            Boolean  @default(false)
+  hasCta             Boolean  @default(true)
+  brokenLinksCount   Int      @default(3)
+  outdatedTech       Boolean  @default(true)
+  auditedAt          DateTime @default(now())
+}
+
+model DecisionMaker {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  fullName    String
+  jobTitle    String
+  email       String
+  phone       String?
+  linkedInUrl String?
+  isPrimary   Boolean  @default(false)
+}
+
+model LeadScore {
+  id                     String   @id @default(uuid())
+  companyId              String
+  company                Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  websiteQualityScore    Int      @default(60)
+  hiringScore            Int      @default(80)
+  agencyFitScore         Int      @default(85)
+  seoScore               Int      @default(55)
+  trustScore             Int      @default(70)
+  buyingIntentScore      Int      @default(85)
+  finalOpportunityScore  Int      @default(78)
+  aiReasoning            String   @db.Text
+  scoredAt               DateTime @default(now())
+}
+
+model OutreachMessage {
+  id              String   @id @default(uuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  coldEmail       String   @db.Text
+  followUp1       String   @db.Text
+  followUp2       String   @db.Text
+  linkedInMessage String   @db.Text
+  callScript      String   @db.Text
+  pitchAngle      String
+  generatedAt     DateTime @default(now())
+}
+
+model CRMDeal {
+  id               String    @id @default(uuid())
+  companyId        String
+  company          Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stage            DealStage @default(NEW)
+  dealAmount       Float
+  winProbability   Int       @default(50) // percentage
+  notes            String?
+  expectedCloseDate DateTime?
+  updatedAt        DateTime  @updatedAt
+}
+
+model ConnectorConfig {
+  id                 String   @id @default(uuid())
+  name               String   @unique
+  connectorType      String   // GOOGLE_MAPS, SEARCH_ENGINE, JOB_BOARD, CRUNCHBASE, CSV_IMPORT, APOLLO_FEED, RSS
+  isEnabled          Boolean  @default(true)
+  syncFrequencyHours Int      @default(24)
+  lastSyncAt         DateTime?
+  leadsDiscovered    Int      @default(0)
+  configJson         Json?
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  type      String   // SIGNAL_DETECTED, LEAD_SCORED, OUTREACH_GENERATED, STAGE_CHANGED
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+enum AgencyClassification {
+  AGENCY
+  BROKERAGE
+  CARRIER
+  ASSOCIATION
+  GOVERNMENT
+  DIRECTORY
+  UNKNOWN
+}
+
+enum VerificationStatus {
+  VERIFIED
+  PARTIALLY_VERIFIED
+  NEEDS_REVIEW
+  UNVERIFIED
+  FAILED
+}
+
+model InsuranceAgency {
+  id                 String               @id @default(uuid())
+  name               String
+  legalName          String?
+  agencyType         AgencyClassification @default(AGENCY)
+  domain             String               @unique
+  website            String
+  description        String?              @db.Text
+  category           String               @default("Commercial Insurance")
+  
+  // Location
+  address            String?
+  city               String
+  state              String
+  country            String               @default("USA")
+  postalCode         String?
+  googlePlaceId      String?              @unique
+  googleMapsUrl      String?
+  googleRating       Float?
+  googleReviewCount  Int?
+
+  // Contact
+  phone              String?
+  phoneSource        String?
+  email              String?
+  emailStatus        String?              // VALID, ACCEPT_ALL, INVALID, UNKNOWN
+  emailConfidence    Int?
+
+  // Business metrics
+  employeeCount      String?
+  revenue            String?
+  foundedYear        Int?
+  
+  // Quality & Scoring
+  qualityScore       Int                  @default(75)
+  opportunityScore   Int                  @default(70)
+  verificationStatus VerificationStatus   @default(VERIFIED)
+  confidence         Float                @default(0.85)
+  
+  // Metadata & Timestamps
+  leadInsight        String?              @db.Text
+  sourceMetadata     Json?
+  firstDiscoveredAt  DateTime             @default(now())
+  lastVerifiedAt     DateTime             @default(now())
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  // Relations
+  contacts           AgencyContact[]
+}
+
+model AgencyContact {
+  id               String               @id @default(uuid())
+  agencyId         String
+  agency           InsuranceAgency      @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  fullName         String
+  jobTitle         String
+  department       String?
+  email            String?
+  emailStatus      String?              // VALID, ACCEPT_ALL, INVALID, UNKNOWN
+  emailConfidence  Int?
+  phone            String?
+  phoneStatus      String?
+  linkedinUrl      String?
+  linkedinVerified Boolean              @default(false)
+  isPrimary        Boolean              @default(false)
+  source           String               @default("Apollo / Hunter")
+  confidence       Float                @default(0.85)
+  lastVerifiedAt   DateTime             @default(now())
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+model AgencyScan {
+  id              String   @id @default(uuid())
+  scanId          String   @unique
+  country         String
+  state           String
+  query           String
+  requestedLimit  Int      @default(100)
+  discoveredCount Int      @default(0)
+  validatedCount  Int      @default(0)
+  rejectedCount   Int      @default(0)
+  savedCount      Int      @default(0)
+  duplicateCount  Int      @default(0)
+  apiErrors       Json?
+  status          String   @default("COMPLETED") // RUNNING, COMPLETED, PARTIAL, FAILED
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+}
+
