@@ -150,50 +150,7 @@ export async function POST(request: Request) {
     );
 
     // Fallback if APIs are restricted/quarantined: use real location domain verified entries
-    const finalLeads = enrichedLeads.length > 0 ? enrichedLeads : [
-      {
-        id: `scan-real-${Date.now()}-1`,
-        name: `${location} Preferred Insurance Group`,
-        email: `info@${location.toLowerCase().replace(/\s+/g, '')}preferredins.com`,
-        website: `https://www.${location.toLowerCase().replace(/\s+/g, '')}preferredins.com`,
-        domain: `${location.toLowerCase().replace(/\s+/g, '')}preferredins.com`,
-        about: `Licensed provider offering commercial, health, auto, and property coverage in ${location}, ${country}.`,
-        country: country === 'CANADA' ? 'CANADA' : 'USA',
-        state: location,
-        city: location,
-        phone: '+1 (800) 442-3091',
-        category: 'Property & Casualty',
-        foundedYear: 1988,
-        employeeCount: '250+',
-        revenue: '$85M',
-        rating: 4.9,
-        googleReviewsCount: 420,
-        googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location + ' Preferred Insurance')}`,
-        status: 'Verified',
-        decisionMakers: [
-          {
-            id: 'dm-r1',
-            fullName: 'Robert Sterling',
-            jobTitle: 'Chief Executive Officer (CEO)',
-            email: `info@${location.toLowerCase().replace(/\s+/g, '')}preferredins.com`,
-            phone: '+1 (800) 442-3091 ext 101',
-            linkedInUrl: `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent('Robert Sterling CEO ' + location)}`,
-            isPrimary: true,
-          },
-          {
-            id: 'dm-r2',
-            fullName: 'Amanda Hayes',
-            jobTitle: 'Marketing Director',
-            email: `marketing@${location.toLowerCase().replace(/\s+/g, '')}preferredins.com`,
-            phone: '+1 (800) 442-3091 ext 204',
-            linkedInUrl: `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent('Amanda Hayes Marketing ' + location)}`,
-            isPrimary: false,
-          },
-        ],
-        isLiveApiScanned: true,
-        scannedAt: new Date().toISOString(),
-      },
-    ];
+    const finalLeads = enrichedLeads;
 
     return NextResponse.json({
       success: true,

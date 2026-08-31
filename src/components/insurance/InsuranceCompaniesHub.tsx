@@ -141,23 +141,12 @@ export const InsuranceCompaniesHub: React.FC = () => {
     }
   };
 
-  // Filter effect
+  // Trigger live scan only when state changes, otherwise local search filter
   useEffect(() => {
-    if (search.trim()) {
-      handleLiveGoogleSearch(search);
-    } else if (selectedState !== 'ALL STATES') {
+    if (selectedState !== 'ALL STATES') {
       handleLiveGoogleSearch(selectedState);
-    } else {
-      let result = [...INITIAL_INSURANCE_COMPANIES];
-      if (selectedCountry !== 'ALL') {
-        result = result.filter((c) => c.country === selectedCountry);
-      }
-      if (selectedCategory !== 'ALL') {
-        result = result.filter((c) => c.category === selectedCategory);
-      }
-      setCompanies(result);
     }
-  }, [search, selectedState, selectedCountry, selectedCategory]);
+  }, [selectedState]);
 
   const handleCopyEmail = (email: string, e: React.MouseEvent) => {
     e.stopPropagation();

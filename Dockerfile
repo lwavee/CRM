@@ -18,6 +18,8 @@ COPY . .
 
 RUN mkdir -p /app/public
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV DATABASE_URL="postgresql://postgres:postgres_password@localhost:5432/eliteops_leads_test?schema=public"
+ENV REDIS_URL="redis://localhost:6379"
 RUN npx prisma generate
 RUN npm run build
 
