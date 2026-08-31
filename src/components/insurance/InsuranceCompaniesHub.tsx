@@ -63,6 +63,7 @@ export const InsuranceCompaniesHub: React.FC = () => {
 
   const [isRescanningCompany, setIsRescanningCompany] = useState(false);
   const [rescanSuccessMsg, setRescanSuccessMsg] = useState<string | null>(null);
+  const [scanIndex, setScanIndex] = useState(0);
 
   const { setLeads, leads } = useAppStore();
 
@@ -96,8 +97,15 @@ export const InsuranceCompaniesHub: React.FC = () => {
   const [scanStats, setScanStats] = useState<any>(null);
 
   // Trigger live Google Maps & API scan for independent insurance agencies
-  const handleLiveGoogleSearch = async (overrideQuery?: string) => {
+  const handleLiveGoogleSearch = async (overrideQuery?: string, isRescan = false) => {
     const q = overrideQuery !== undefined ? overrideQuery : (selectedState !== 'ALL STATES' ? selectedState : search || 'Idaho');
+
+    const currentIndex = isRescan ? scanIndex + 1 : 0;
+    if (isRescan) {
+      setScanIndex(currentIndex);
+    } else {
+      setScanIndex(0);
+    }
 
     setIsLiveScanning(true);
     setLiveScanStatus(`Clearing old cache & scanning live APIs (Google Places, Google Search, Hunter, Apollo, GPT-4o) for "${q}"...`);
@@ -111,10 +119,10 @@ export const InsuranceCompaniesHub: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: 'independent insurance agency',
           state: q,
           country: selectedCountry === 'ALL' ? 'USA' : selectedCountry,
           limit: 100,
+          scanIndex: currentIndex,
         }),
       });
 
@@ -298,7 +306,7 @@ export const InsuranceCompaniesHub: React.FC = () => {
           </div>
 
           <button
-            onClick={() => handleLiveGoogleSearch(selectedState !== 'ALL STATES' ? selectedState : search || 'Idaho')}
+            onClick={() => handleLiveGoogleSearch(selectedState !== 'ALL STATES' ? selectedState : search || 'Idaho', true)}
             disabled={isLiveScanning}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-sm font-semibold transition-all shadow-glow disabled:opacity-50 cursor-pointer"
           >
@@ -421,7 +429,7 @@ export const InsuranceCompaniesHub: React.FC = () => {
               className="w-full bg-slate-950/80 border border-slate-800 text-slate-200 pl-10 pr-28 py-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-500/80 focus:ring-1 focus:ring-blue-500/40 transition-all placeholder:text-slate-500"
             />
             <button
-              onClick={() => handleLiveGoogleSearch(search)}
+              onClick={() => handleLiveGoogleSearch(search, true)}
               className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
             >
               <RefreshCw className={`w-3 h-3 ${isLiveScanning ? 'animate-spin' : ''}`} /> Scan 100 NEW
@@ -526,7 +534,7 @@ export const InsuranceCompaniesHub: React.FC = () => {
             Click below to execute a real-time scan of Google Places, Google Search, Hunter.io & Apollo.io.
           </p>
           <button
-            onClick={() => handleLiveGoogleSearch(selectedState !== 'ALL STATES' ? selectedState : search || 'Idaho')}
+            onClick={() => handleLiveGoogleSearch(selectedState !== 'ALL STATES' ? selectedState : search || 'Idaho', true)}
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl transition-all shadow-glow cursor-pointer"
           >
             Scan 100 NEW Google & Maps Listings

@@ -11,7 +11,8 @@ export async function discoverDomainsViaGoogle(
   query: string,
   location: string,
   country: string = 'USA',
-  limit: number = 10
+  limit: number = 10,
+  start: number = 1
 ): Promise<{ success: boolean; results: GoogleSearchResultItem[]; error?: string }> {
   const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
   const cx = process.env.GOOGLE_SEARCH_CX;
@@ -28,7 +29,7 @@ export async function discoverDomainsViaGoogle(
     const searchQuery = `"${query}" "${location}" "${country}" official independent insurance agency domain`;
     const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${encodeURIComponent(
       searchQuery
-    )}&num=${Math.min(limit, 10)}`;
+    )}&num=${Math.min(limit, 10)}&start=${start}`;
 
     const res = await fetch(url, { cache: 'no-store' });
 

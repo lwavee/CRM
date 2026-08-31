@@ -28,20 +28,31 @@ export async function POST(request: Request) {
       country = 'USA',
       state = 'Idaho',
       city = '',
-      query = 'independent insurance agency',
       limit = 100,
+      scanIndex = 0,
     } = body;
 
     const locationQuery = city ? `${city}, ${state}` : state;
     const apiErrors: string[] = [];
 
+    const queryVariations = [
+      'independent insurance agency',
+      'commercial insurance brokers',
+      'local insurance agencies',
+      'business insurance services',
+      'property and casualty insurance agency',
+      'insurance brokerage firm',
+    ];
+    const currentQuery = queryVariations[scanIndex % queryVariations.length];
+    const searchStartIndex = (scanIndex * 10) + 1;
+
     // 1. Live Discovery via Google Places & Google Search APIs
-    const placesRes = await discoverGooglePlaces('independent insurance agency', locationQuery, country, Math.min(limit, 20));
+    const placesRes = await discoverGooglePlaces(currentQuery, locationQuery, country, Math.min(limit, 20));
     if (!placesRes.success && placesRes.error) {
       apiErrors.push(`Google Places: ${placesRes.error}`);
     }
 
-    const searchRes = await discoverDomainsViaGoogle(query, locationQuery, country, 10);
+    const searchRes = await discoverDomainsViaGoogle(currentQuery, locationQuery, country, 10, searchStartIndex);
     if (!searchRes.success && searchRes.error) {
       apiErrors.push(`Google Search: ${searchRes.error}`);
     }
